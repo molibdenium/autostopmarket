@@ -11,6 +11,8 @@ apscheduler
 
 If you are starting with a fresh python install, make sure to run "pip install requests" and "pip install websocket" and "pip install apscheduler" to get your python environment set up to run everything that this script asks for.
 
+rename api_data_template.py to api_data.py and add you binance API key/secret inside the file.
+
 
 # Demo video
 https://youtu.be/x2ohPL17rn4
