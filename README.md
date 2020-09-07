@@ -14,7 +14,7 @@ apscheduler
 If you are starting with a fresh python install, make sure to run "pip install requests" and "pip install websocket" and "pip install apscheduler" to get your python environment set up to run everything that this script asks for.
 
 
-#Demo video
+# Demo video
 https://youtu.be/x2ohPL17rn4
 =======
 
