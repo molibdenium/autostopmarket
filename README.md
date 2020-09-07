@@ -1,8 +1,6 @@
 # autostopmarket
 This python script will set up a stop market order on Binance Futures, to avoid liquidation.
 
-It creates an order 
-
 #Install intructions:
 
 requires Python 3+ and the following modules:
