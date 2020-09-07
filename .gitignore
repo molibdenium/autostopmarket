@@ -1,0 +1,13 @@
+.Trashes
+.fseventsd
+.TemporaryItems
+.DocumentRevisions-V100
+_DUMP/
+_DATA/
+_ARBS/
+.DS_Store
+__pycache__
+api_data.py
+token.pickle
+credentials.json
+.json
