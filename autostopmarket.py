@@ -171,7 +171,7 @@ def createPositionStop(amount,liquidationPrice, symbol):
 
 		if not exists:
 			logger.info("creating stop order, liquidation %s, amount %s, stop price %s, %s %s" % (liquidationPrice,vol, price,symbol, sideo[orderside] ))
-			result = request_client.post_order(symbol=symbol, side=sideo[orderside], ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price, reduceOnly="true",workingType=WorkingType.CONTRACT_PRICE,newClientOrderId="autostopmarket"+symbol)#timeInForce="GTX",
+			result = request_client.post_order(symbol=symbol, side=sideo[orderside], ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price, reduceOnly="true",workingType=WorkingType.MARK_PRICE,newClientOrderId="autostopmarket"+symbol)#timeInForce="GTX",
 	except:
 		e = sys.exc_info()
 		logger.error("EXCEPTION ERROR - line %s, %s, %s" % (e[-1].tb_lineno, type(e).__name__, e))
