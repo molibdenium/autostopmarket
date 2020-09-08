@@ -13,6 +13,8 @@ If you are starting with a fresh python install, make sure to run "pip install r
 
 rename api_data_template.py to api_data.py and add you binance API key/secret inside the file.
 
+Quick install video using Conda on osx (its similiar on win/linux): https://youtu.be/5Lxrox0wxbo 
+
 
 # Demo video
 https://youtu.be/x2ohPL17rn4
