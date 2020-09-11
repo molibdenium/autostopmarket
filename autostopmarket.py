@@ -136,7 +136,7 @@ tickSize = assetTickSize(main_symbol)
 def error(e: 'BinanceApiException'):
 	print(e.error_code + e.error_message)
 
-def createPositionStop(amount,liquidationPrice, symbol):
+def createPositionStop(amount,liquidationPrice,symbol,mode):
 	try:
 		orderside = "BID" if amount < 0 else "ASK"
 		sideo = {"BID":OrderSide.BUY,"ASK":OrderSide.SELL}
@@ -160,18 +160,23 @@ def createPositionStop(amount,liquidationPrice, symbol):
 		exists = False
 		if result != []:
 			for p in result:
-				if p.clientOrderId == "autostopmarket"+symbol:
+				if p.clientOrderId == "autostopmarket"+symbol+mode:
 					exists = True
 					if p.side == sideo[orderside] and float(p.origQty) == float(vol) and float(p.stopPrice) == float(price):
 						logger.info("currently auto stop order still valid, nothing to update.")
 					else:
-						request_client.cancel_order(symbol,origClientOrderId="autostopmarket"+symbol)
+						request_client.cancel_order(symbol,origClientOrderId="autostopmarket"+symbol+mode)
 						logger.info("canceling auto stop order for a update")
 
 
 		if not exists:
 			logger.info("creating stop order, liquidation %s, amount %s, stop price %s, %s %s" % (liquidationPrice,vol, price,symbol, sideo[orderside] ))
-			result = request_client.post_order(symbol=symbol, side=sideo[orderside], ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price, reduceOnly="true",workingType=WorkingType.MARK_PRICE,newClientOrderId="autostopmarket"+symbol)#timeInForce="GTX",
+			if mode == PositionSide.BOTH:
+				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price, reduceOnly="true",workingType=WorkingType.MARK_PRICE,newClientOrderId="autostopmarket"+symbol+mode)#timeInForce="GTX",
+			else:
+				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price,workingType=WorkingType.MARK_PRICE,newClientOrderId="autostopmarket"+symbol+mode)#timeInForce="GTX",
+		
+
 	except:
 		e = sys.exc_info()
 		logger.error("EXCEPTION ERROR - line %s, %s, %s" % (e[-1].tb_lineno, type(e).__name__, e))
@@ -184,17 +189,25 @@ async def place_stoporder():
 			account = request_client.get_position()
 			current_order_price = 0
 
-			for p in account:#.positions:
+			for p in account: #positions:
+				actual_amount = 0
 				if p.symbol == main_symbol:
+					# PrintBasic.print_obj(p)
 					actual_amount = p.positionAmt
 					liquidationPrice = p.liquidationPrice
+					mode = PositionSide.BOTH
 
-			logger.info("current OPEN position amount: %s" % actual_amount)
-			if actual_amount != 0:
-				createPositionStop(actual_amount,liquidationPrice,main_symbol)
-			else:
-				logger.info("No OPEN positions, nothing to do!")
+					if p.positionSide == "BOTH":
+						logger.info("current OPEN position amount: %s" % actual_amount)
+					elif p.positionSide in ["LONG","SHORT"]: #HEDGE mode
+						mode = PositionSide.LONG if p.positionSide == "LONG" else PositionSide.SHORT
+						logger.info("current %s OPEN position amount: %s" % (p.positionSide, actual_amount))
 
+
+					if actual_amount != 0:
+						createPositionStop(actual_amount,liquidationPrice,main_symbol,mode)
+					else:
+						logger.info("No OPEN positions, nothing to do!")
 
 		except:
 			e = sys.exc_info()

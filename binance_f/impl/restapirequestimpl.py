@@ -639,7 +639,7 @@ class RestApiRequestImpl(object):
 	def get_position(self):
 		builder = UrlParamsBuilder()
 
-		request = self.__create_request_by_get_with_signature("/fapi/v1/positionRisk", builder)
+		request = self.__create_request_by_get_with_signature("/fapi/v2/positionRisk", builder)
 
 		def parse(json_wrapper):
 			result = list()
