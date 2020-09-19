@@ -43,14 +43,15 @@ logger.addHandler(handler)
 #########################
 # testnet vs main account
 #########################
+from binance_f.model import *
+from binance_f.exception.binanceapiexception import BinanceApiException
+from binance_f.base.printobject import *
+from binance_f import RequestClient as rc 
+
+
 if "TEST" in ENVARGS:
 	api_key = api_data.binancetestnet["apiKey"]
 	secret_key = api_data.binancetestnet["secret"]
-	from binance_f.model import *
-	from binance_f.exception.binanceapiexception import BinanceApiException
-	from binance_f.base.printobject import *
-	from binance_f import RequestClient as rc 
-	from binance_f import SubscriptionClient as sc
 	logger.info("using TESTNET credentials")
 	shortname = "BINFUTTESTNET"
 	base = "https://testnet.binancefuture.com"
@@ -58,17 +59,14 @@ if "TEST" in ENVARGS:
 else:
 	api_key = api_data.binance["apiKey"]
 	secret_key = api_data.binance["secret"]
-	from binance_f_main.constant.test import *
-	from binance_f_main.model import *
-	from binance_f_main.exception.binanceapiexception import BinanceApiException
-	from binance_f_main.base.printobject import *
-	from binance_f_main import RequestClient as rc 
-	from binance_f_main import SubscriptionClient as sc
 	logger.info("using MAIN ACCOUNT credentials")
 	shortname = "BINFUT"
 	base = "https://fapi.binance.com"
 
-request_client = rc(api_key=api_key, secret_key=secret_key,server_url=base)
+
+
+
+request_client = rc(api_key=api_key, secret_key=secret_key,url=base)
 
 
 
