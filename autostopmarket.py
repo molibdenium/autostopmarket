@@ -22,6 +22,10 @@ if len(sys.argv) >= 1:
 if "-h" in ENVARGS:
 	print( "for testnet use 'TEST' on the parameters")
 	print( "for any symbol other than BTC, it should be specified on the arguments")
+	print( "to limit losses to a fixed amount of usdt put the number in parameters, i.e:")
+	print( "autostoplimit.py xrp 100")
+	print( "to limit losses to a %  amount of the position size use the number in paramenters, i.e:")
+	print( "autostoplimit.py eth 10%")
 	quit()
 #===============================================================================
 # env args end
@@ -94,8 +98,6 @@ def assetTickSize(symbol):
 				if f["filterType"] == "PRICE_FILTER":
 					tickSize = f["tickSize"]
 
-
-			# print(symbol,tickSize)
 			break
 	return float(tickSize)
 
@@ -112,6 +114,9 @@ exchange_info = ei
 symbols = [s["symbol"] for s in exchange_info["symbols"]]
 main_symbol = False
 order_amount = False
+losslimit = False
+percentagemode = False
+
 for e in ENVARGS:
 	if type(e) == str and e.upper() in symbols: 
 		logger.info("working symbol: %s" % e.upper())
@@ -121,6 +126,27 @@ for e in ENVARGS:
 		logger.info("working symbol: %s" % e.upper() + "USDT")
 		main_symbol = e.upper() + "USDT"
 		break
+	
+	elif type(e) == str and "%" in e:
+		logger.info("using percentage loss limit: %s" % e)
+		losslimit = float(e[0:-1])
+		try:
+			losslimit = float(e[0:-1])
+			percentagemode = True
+		
+		except:
+			pass
+
+	try:
+		e = float(e)
+		logger.info("using fixed loss limit: $ %s" % e)
+		losslimit = float(e)
+
+	except:
+		pass
+
+
+
 
 if main_symbol == False:
 	logger.info("no symbol provided, default to BTCUSDT")
@@ -134,17 +160,42 @@ tickSize = assetTickSize(main_symbol)
 def error(e: 'BinanceApiException'):
 	print(e.error_code + e.error_message)
 
-def createPositionStop(amount,liquidationPrice,symbol,mode):
+def createPositionStop(**kwargs):
+	amount = kwargs["actual_amount"]
+	liquidationPrice=  kwargs["liquidationPrice"]
+	symbol = kwargs["main_symbol"]
+	mode = kwargs["mode"]
+	entryPrice = kwargs["entryPrice"]
+	leverage = kwargs["leverage"]
+
+
 	try:
 		orderside = "BID" if amount < 0 else "ASK"
 		sideo = {"BID":OrderSide.BUY,"ASK":OrderSide.SELL}
 		vol = float(amount)
-
-
 		signal = -1 if vol < 0 else 1 
-		price = float(liquidationPrice) + (tickSize * 100 * signal)
-		vol = abs(vol)
+		price = float(liquidationPrice) + (tickSize * 100 * signal) #base liquidation price
 
+		if losslimit != False and percentagemode == True:
+			vol = abs(vol)
+			losslimitprice = float(entryPrice) + (((float(entryPrice)/100) * (losslimit/leverage)) * (signal*-1))
+
+		elif losslimit != False:
+			vol = abs(vol)
+			losslimitprice = entryPrice + ((losslimit/vol) * (signal)*-1) #limited loss price
+			
+
+		if losslimit != False:
+
+			if signal == 1 and losslimitprice >= price: #sell orders
+				price = losslimitprice #losslimit price will not liquidate position
+			elif signal == -1 and losslimitprice <= price:
+				price = losslimitprice
+			else:
+				logger.info("loss limit value too big, keeping base liquidation price")
+
+	
+		vol = abs(vol)
 		p = assetPricePrecision(symbol)
 		price = f"{price:0.{p}f}"
 		p =  assetQuantityPrecision(symbol)
@@ -156,23 +207,45 @@ def createPositionStop(amount,liquidationPrice,symbol,mode):
 		############################################
 		result = request_client.get_open_orders(symbol=main_symbol)
 		exists = False
+
+		if losslimit == False:
+			typemode = "avoid liquidation fees"
+		else:
+			symbolm = "%" if percentagemode == True else "$"
+			if losslimit > 0:
+				typemode = "max loss: " + symbolm + str(losslimit)
+			else:
+				typemode = "take profit: " + symbolm + str(losslimit*-1)
+
+		extra_name_for_profit = "profit" if losslimit < 0 else ""
+
 		if result != []:
 			for p in result:
-				if p.clientOrderId == "autostopmarket"+symbol+mode:
+				if p.clientOrderId == "autostopmarket"+symbol+mode+extra_name_for_profit:
 					exists = True
 					if p.side == sideo[orderside] and float(p.origQty) == float(vol) and float(p.stopPrice) == float(price):
-						logger.info("currently auto stop order still valid, nothing to update.")
+						logger.info("auto stop order still valid, nothing to update. mode: " + typemode)
 					else:
-						request_client.cancel_order(symbol,origClientOrderId="autostopmarket"+symbol+mode)
+						request_client.cancel_order(symbol,origClientOrderId="autostopmarket"+symbol+mode+extra_name_for_profit)
 						logger.info("canceling auto stop order for a update")
 
 
 		if not exists:
-			logger.info("creating stop order, liquidation %s, amount %s, stop price %s, %s %s" % (liquidationPrice,vol, price,symbol, sideo[orderside] ))
-			if mode == PositionSide.BOTH:
-				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price, reduceOnly="true",workingType=WorkingType.MARK_PRICE,newClientOrderId="autostopmarket"+symbol+mode)#timeInForce="GTX",
+			wt = WorkingType.MARK_PRICE
+			if losslimit == False: #avoid liquidation with mark price
+				logger.info("creating stop order, liquidation %s, amount %s, stop price %s, %s %s" % (liquidationPrice,vol, price,symbol, sideo[orderside] ))
 			else:
-				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price,workingType=WorkingType.MARK_PRICE,newClientOrderId="autostopmarket"+symbol+mode)#timeInForce="GTX",
+				wt = WorkingType.CONTRACT_PRICE #stop market with contract true price
+				symbolm = "%" if percentagemode == True else "$"
+				if losslimit > 0:
+					logger.info("creating stop order, max loss %s %s, amount %s, stop price %s, %s %s" % (symbolm, losslimit,vol, price,symbol, sideo[orderside] ))
+				else:
+					logger.info("creating take profit order, %s %s, amount %s, stop price %s, %s %s" % (symbolm, (losslimit*-1),vol, price,symbol, sideo[orderside] ))
+
+			if mode == PositionSide.BOTH:
+				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price, reduceOnly="true",workingType=wt,newClientOrderId="autostopmarket"+symbol+mode+extra_name_for_profit)#timeInForce="GTX",
+			else:
+				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price,workingType=wt,newClientOrderId="autostopmarket"+symbol+mode+extra_name_for_profit)#timeInForce="GTX",
 		
 
 	except:
@@ -181,7 +254,6 @@ def createPositionStop(amount,liquidationPrice,symbol,mode):
 
 
 async def place_stoporder():
-
 	while True:
 		try:
 			account = request_client.get_position()
@@ -194,6 +266,8 @@ async def place_stoporder():
 					actual_amount = p.positionAmt
 					liquidationPrice = p.liquidationPrice
 					mode = PositionSide.BOTH
+					entryPrice = p.entryPrice
+					leverage = p.leverage
 
 					if p.positionSide == "BOTH":
 						logger.info("current OPEN position amount: %s" % actual_amount)
@@ -201,9 +275,9 @@ async def place_stoporder():
 						mode = PositionSide.LONG if p.positionSide == "LONG" else PositionSide.SHORT
 						logger.info("current %s OPEN position amount: %s" % (p.positionSide, actual_amount))
 
-
 					if actual_amount != 0:
-						createPositionStop(actual_amount,liquidationPrice,main_symbol,mode)
+						kwargs = {"actual_amount":actual_amount,"liquidationPrice":liquidationPrice,"main_symbol":main_symbol,"mode":mode,"entryPrice":entryPrice,"leverage":leverage}
+						createPositionStop(**kwargs)
 					else:
 						logger.info("No OPEN positions, nothing to do!")
 
