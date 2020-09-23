@@ -1,5 +1,6 @@
 # autostopmarket
-This python script will set up a stop market order on Binance Futures, to avoid liquidation.
+This python script will set up a stop market order on Binance Futures, to avoid paying liquidation fees.
+You can also setup a fixed/percentage loss amount and it will create the stop market order for you.
 
 # Install intructions:
 
@@ -19,6 +20,10 @@ Quick install video using Conda on osx (its similiar on win/linux): https://yout
 # Demo video
 https://youtu.be/x2ohPL17rn4
 =======
+
+Using the fixed/percentage options to limit losses:
+https://youtu.be/GmjA9kaI2rA
+
 
 If you like this and or it saved your bacon, feel free to contribute
 btc: 1DN6jvGZbQkYT9RoCjCVzTs5MwC3xvdmMh
