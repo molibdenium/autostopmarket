@@ -3,6 +3,7 @@ import sys
 import api_data
 import requests
 import asyncio, signal, functools
+from rich.logging import RichHandler
 
 
 if 'win32' in sys.platform:
@@ -37,9 +38,14 @@ if "-h" in ENVARGS:
 #===============================================================================
 logger = logging.getLogger("binance-futures")
 logger.setLevel(level=logging.INFO)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logger.addHandler(handler)
+# handler = logging.StreamHandler()
+test = RichHandler()
+# test.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+# logger.addHandler(handler)
+logger.addHandler(test)
+# formatter = logging.Formatter('\x1b[80D\x1b[1A\x1b[K%(message)s')
+# add formatter to console handler
+# logger.setFormatter(formatter)
 #===============================================================================
 # logger setup end 
 #===============================================================================
@@ -173,9 +179,10 @@ def createPositionStop(**kwargs):
 		orderside = "BID" if amount < 0 else "ASK"
 		sideo = {"BID":OrderSide.BUY,"ASK":OrderSide.SELL}
 		vol = float(amount)
-		signal = -1 if vol < 0 else 1 
-		price = float(liquidationPrice) + (tickSize * 100 * signal) #base liquidation price
-
+		signal = -1 if vol < 0 else 1
+		tickmult = 0.01 if liquidationPrice < 1 else 1 ### for currencies with very small prices, use the regular ticksize
+		price = float(liquidationPrice) + (tickSize * 100 * signal * tickmult) #base liquidation price
+		
 		if losslimit != False and percentagemode == True:
 			vol = abs(vol)
 			losslimitprice = float(entryPrice) + (((float(entryPrice)/100) * (losslimit/leverage)) * (signal*-1))
@@ -201,6 +208,7 @@ def createPositionStop(**kwargs):
 		p =  assetQuantityPrecision(symbol)
 		vol = f"{vol:0.{p}f}"
 
+		
 
 		############################################
 		# check for existing auto stop order
@@ -242,8 +250,9 @@ def createPositionStop(**kwargs):
 				else:
 					logger.info("creating take profit order, %s %s, amount %s, stop price %s, %s %s" % (symbolm, (losslimit*-1),vol, price,symbol, sideo[orderside] ))
 
+			
 			if mode == PositionSide.BOTH:
-				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price, reduceOnly="true",workingType=wt,newClientOrderId="autostopmarket"+symbol+mode+extra_name_for_profit)#timeInForce="GTX",
+				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price,reduceOnly="true",workingType=wt,newClientOrderId="autostopmarket"+symbol+mode+extra_name_for_profit)#timeInForce="GTX",
 			else:
 				result = request_client.post_order(symbol=symbol, side=sideo[orderside], positionSide=mode,ordertype=OrderType.STOP_MARKET, quantity=vol, stopPrice=price,workingType=wt,newClientOrderId="autostopmarket"+symbol+mode+extra_name_for_profit)#timeInForce="GTX",
 		
@@ -268,6 +277,7 @@ async def place_stoporder():
 					mode = PositionSide.BOTH
 					entryPrice = p.entryPrice
 					leverage = p.leverage
+
 
 					if p.positionSide == "BOTH":
 						logger.info("current OPEN position amount: %s" % actual_amount)
@@ -313,7 +323,7 @@ for signame in ('SIGINT', 'SIGTERM'):
 
 def auto_stop_market():
 	asyncio.ensure_future(place_stoporder())  
-	print("Event loop running forever, press Ctrl+C to interrupt.")
+	logger.info("Event loop running forever, press Ctrl+C to interrupt.")
 
 	try:
 		loop.run_forever()
