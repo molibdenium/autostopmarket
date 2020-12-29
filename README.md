@@ -9,6 +9,7 @@ requires Python 3+ and the following modules:
 requests
 websocket
 apscheduler
+rich (not essential, just some fancy console coloring)
 
 If you are starting with a fresh python install, make sure to run "pip install requests" and "pip install websocket" and "pip install apscheduler" to get your python environment set up to run everything that this script asks for.
 

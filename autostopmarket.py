@@ -3,7 +3,14 @@ import sys
 import api_data
 import requests
 import asyncio, signal, functools
-from rich.logging import RichHandler
+
+
+richlog = True
+try:
+	from richi.logging import RichHandler
+except:
+	richlog = False
+
 
 
 if 'win32' in sys.platform:
@@ -38,14 +45,13 @@ if "-h" in ENVARGS:
 #===============================================================================
 logger = logging.getLogger("binance-futures")
 logger.setLevel(level=logging.INFO)
-# handler = logging.StreamHandler()
-test = RichHandler()
-# test.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-# logger.addHandler(handler)
-logger.addHandler(test)
-# formatter = logging.Formatter('\x1b[80D\x1b[1A\x1b[K%(message)s')
-# add formatter to console handler
-# logger.setFormatter(formatter)
+
+if richlog == True:
+	rlog = RichHandler()
+	logger.addHandler(rlog)
+else:
+	handler = logging.StreamHandler()
+	logger.addHandler(handler)
 #===============================================================================
 # logger setup end 
 #===============================================================================
