@@ -27,3 +27,4 @@ https://youtu.be/GmjA9kaI2rA
 
 If you like this and or it saved your bacon, feel free to contribute
 btc: 1DN6jvGZbQkYT9RoCjCVzTs5MwC3xvdmMh
+ltc: LTT8Gj8nnwBCEGAcapjfLy9EyZtiu6Ntqh
