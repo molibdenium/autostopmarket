@@ -7,7 +7,7 @@ import asyncio, signal, functools
 
 richlog = True
 try:
-	from richi.logging import RichHandler
+	from rich.logging import RichHandler
 except:
 	richlog = False
 
