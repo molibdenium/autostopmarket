@@ -25,6 +25,6 @@ Using the fixed/percentage options to limit losses:
 https://youtu.be/GmjA9kaI2rA
 
 
-If you like this and or it saved your bacon, feel free to contribute
-btc: 1DN6jvGZbQkYT9RoCjCVzTs5MwC3xvdmMh
+If you like this and or it saved your bacon, feel free to contribute<br/>
+btc: 1DN6jvGZbQkYT9RoCjCVzTs5MwC3xvdmMh<br/>
 ltc: LTT8Gj8nnwBCEGAcapjfLy9EyZtiu6Ntqh
